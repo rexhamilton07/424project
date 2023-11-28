@@ -123,7 +123,9 @@ class StudentAgent(Agent):
         for d in range(0,4): #left, up, right, down
             for len in range(1,max_step+1): #1 to the max amount you can move
                 #check if new position is through a wall or or if you are moving ontop of the opponent
-                if x+len*moves[d][0] < 0 or x+len*moves[d][0] > max_step*2 or y+len*moves[d][1] < 0 or y+len*moves[d][1] > max_step*2:
+                print("x=",x+len*moves[d][0])
+                print("y=",y+len*moves[d][1])
+                if x+len*moves[d][0] < 0 or x+len*moves[d][0] > max_step*2-2 or y+len*moves[d][1] < 0 or y+len*moves[d][1] > max_step*2-2:
                     break
                 if chess_board[x+len*moves[d][0],y+len*moves[d][1],d] or adv_pos == (x+len*moves[d][0], y+len*moves[d][1]): 
                     break

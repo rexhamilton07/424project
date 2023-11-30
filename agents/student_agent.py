@@ -3,6 +3,8 @@ from store import register_agent
 import time
 import numpy as np
 from copy import deepcopy
+import random
+
 
 @register_agent("student_agent")
 class StudentAgent(Agent):
@@ -22,6 +24,7 @@ class StudentAgent(Agent):
 
         moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
 
+        #return moves[random.randint(0, len(moves) - 1)]
         farthest = 0
         best_move = my_pos
         (a, b) = my_pos
@@ -115,26 +118,51 @@ class StudentAgent(Agent):
             beta = min(beta, value)
 
         return value, best_move
-
+    
     def get_viable_moves(self, chess_board, my_pos, adv_pos, max_step):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
-        x,y = my_pos
-        allowed_moves =[]
-        for d in range(0,4): #left, up, right, down
-            for len in range(1,max_step+1): #1 to the max amount you can move
-                #check if new position is through a wall or or if you are moving ontop of the opponent
-                if x+len*moves[d][0] < 0 or x+len*moves[d][0] > max_step*2 or y+len*moves[d][1] < 0 or y+len*moves[d][1] > max_step*2:
+        x, y = my_pos
+        allowed_moves = []
+        for d in range(0, 4):
+            for l in range(0, max_step):  # 0 to the max amount you can move
+                new_x, new_y = x + l * moves[d][0], y + l * moves[d][1]
+                # check if we are at the end of the board
+                if (new_x < 0 or new_y < 0 or new_x >= len(chess_board) or new_y >= len(chess_board)):
                     break
-                if chess_board[x+len*moves[d][0],y+len*moves[d][1],d] or adv_pos == (x+len*moves[d][0], y+len*moves[d][1]): 
+                # now we are at a certain cell, first check to see if we can go any farther
+                # check opponent position
+                if (d == 0 and adv_pos == (new_x - 1, new_y)):
+                    for place in range(0, 4):
+                        if not chess_board[new_x, new_y, place]:
+                            allowed_moves.append(((new_x, new_y), place))
                     break
-                #go through all the barrier placements and see if you can add them
-                for placement in range(0,4):#up, down, left, right
-                    if not chess_board[x+len*moves[d][0],y+len*moves[d][1],placement]:
-                        #add this move to the array
-                        c,r = (x+len*moves[d][0], y+len*moves[d][1])
-                        position = ((c,r),placement)
-                        allowed_moves.append(position)              
+                if (d == 1 and adv_pos == (new_x + 1, new_y)):
+                    for place in range(0, 4):
+                        if not chess_board[new_x, new_y, place]:
+                            allowed_moves.append(((new_x, new_y), place))
+                    break
+                if (d == 2 and adv_pos == (new_x, new_y + 1)):
+                    for place in range(0, 4):
+                        if not chess_board[new_x, new_y, place]:
+                            allowed_moves.append(((new_x, new_y), place))
+                    break
+                if (d == 3 and adv_pos == (new_x, new_y - 1)):
+                    for place in range(0, 4):
+                        if not chess_board[new_x, new_y, place]:
+                            allowed_moves.append(((new_x, new_y), place))
+                    break
+                # check for barrier
+                if chess_board[new_x, new_y, d]:
+                    # cannot move farther
+                    for place in range(4):
+                        if not chess_board[new_x, new_y, place]:
+                            allowed_moves.append(((new_x, new_y), place))
+                    break
+                for place in range(4):
+                        if not chess_board[new_x, new_y, place]:
+                            allowed_moves.append(((new_x, new_y), place))
         return allowed_moves
+
 
     def is_suicide(self, chess_board, my_pos, adv_pos, move):
         # Implement is_suicide function

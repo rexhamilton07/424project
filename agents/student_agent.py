@@ -25,7 +25,7 @@ class StudentAgent(Agent):
         moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
 
         #return moves[random.randint(0, len(moves) - 1)]
-        farthest = 0
+        farthest = -1
         best_move = my_pos
         (a, b) = my_pos
         best_move = my_pos
@@ -161,18 +161,96 @@ class StudentAgent(Agent):
                 for place in range(4):
                         if not chess_board[new_x, new_y, place]:
                             allowed_moves.append(((new_x, new_y), place))
-        return allowed_moves
+        #check kill and suicide for all moves
+        i = 0
+        filtered_moves = []
+        for (x, y), d in allowed_moves:
+            i+=1
+            potential_move = ((x,y),d)
+            new_board = self.add_move_to_board(chess_board, potential_move)
+            new_pos = (x, y)
+            if self.is_suicide(new_board, new_pos, adv_pos):
+                continue
+            if self.wins_game(new_board, new_pos, adv_pos):
+                return potential_move
+            filtered_moves.append(allowed_moves[i-1])
+        return filtered_moves
 
+    def add_move_to_board(self, chess_board, move):
+        new_board = deepcopy(chess_board)
+        (x,y),d = move
+        new_board[x, y, d] = True
+        if d == 0:
+            new_board[x-1,y,2] = True
+        if d ==1:
+            new_board[x,y+1,3] = True
+        if d == 2:
+            new_board[x+1,y,0] = True
+        if d == 3:
+            new_board[x,y-1,1] = True
+        return new_board
 
-    def is_suicide(self, chess_board, my_pos, adv_pos, move):
-        # Implement is_suicide function
-        # Returns True if the move results in defeat, else False
-        pass
+    def is_endgame(self, my_pos, adv_pos, chess_board):
+        # Union-Find
+        moves = moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
+        
+        father = dict()
+        for r in range(len(chess_board)):
+            for c in range(len(chess_board)):
+                father[(r, c)] = (r, c)
+
+        def find(pos):
+            if father[pos] != pos:
+                father[pos] = find(father[pos])
+            return father[pos]
+
+        def union(pos1, pos2):
+            father[pos1] = pos2
+
+        for r in range(len(chess_board)):
+            for c in range(len(chess_board)):
+                for dir, move in enumerate(
+                    moves[1:3]
+                ):  # Only check down and right
+                    if chess_board[r, c, dir + 1]:
+                        continue
+                    pos_a = find((r, c))
+                    pos_b = find((r + move[0], c + move[1]))
+                    if pos_a != pos_b:
+                        union(pos_a, pos_b)
+
+        for r in range(len(chess_board)):
+            for c in range(len(chess_board)):
+                find((r, c))
+        p0_r = find(tuple(my_pos))
+        p1_r = find(tuple(adv_pos))
+        p0_score = list(father.values()).count(p0_r)
+        p1_score = list(father.values()).count(p1_r)
+        if p0_r == p1_r:
+            return False, p0_score, p1_score
+        player_win = None
+        win_blocks = -1
+        if p0_score > p1_score:
+            player_win = 0
+            win_blocks = p0_score
+        elif p0_score < p1_score:
+            player_win = 1
+            win_blocks = p1_score
+        else:
+            player_win = -1
+        return True, p0_score, p1_score
+    
+    def is_suicide(self, chess_board, my_pos, adv_pos):
+        result, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
+        if result and x < y:
+            return True
+        return False
 
     def wins_game(self, chess_board, my_pos, adv_pos):
-        # Implement wins_game function
-        # Returns True if the current state results in a win, else False
-        pass
+        result, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
+        if result and x > y:
+            return True
+        return False
 
     def monte_carlo(self, chess_board, my_pos, adv_pos, max_step):
         # Implement monte_carlo function

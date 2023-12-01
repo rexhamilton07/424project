@@ -172,7 +172,7 @@ class StudentAgent(Agent):
             if self.is_suicide(new_board, new_pos, adv_pos):
                 continue
             if self.wins_game(new_board, new_pos, adv_pos):
-                return potential_move
+                return [potential_move]
             filtered_moves.append(allowed_moves[i-1])
         return filtered_moves
 

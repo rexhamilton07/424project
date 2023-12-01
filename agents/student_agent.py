@@ -15,27 +15,9 @@ class StudentAgent(Agent):
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
         start_time = time.time()
-
-        # # Implement your alpha-beta search here
-        # best_move = self.alpha_beta_search(chess_board, my_pos, adv_pos, max_step)
-
+        move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step)
         time_taken = time.time() - start_time
-        # print("My AI's turn took ", time_taken, "seconds.")
-
-        moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
-
-        #return moves[random.randint(0, len(moves) - 1)]
-        farthest = -1
-        best_move = my_pos
-        (a, b) = my_pos
-        best_move = my_pos
-        for i in range(len(moves)):
-            (x, y) = moves[i][0] #x,y
-            if ((abs(a-x)**2+abs(b-y)**2)**(1/2) > farthest):
-                farthest = (abs(a-x)**2+abs(b-y)**2)**(1/2)
-                best_move = moves[i]
-
-        return best_move[0], best_move[1]
+        print("My AI's turn took ", time_taken, "seconds.")
 
     def alpha_beta_search(self, chess_board, my_pos, adv_pos, max_step):
         # Implement alpha-beta search algorithm with a maximum time of 2 seconds
@@ -248,15 +230,49 @@ class StudentAgent(Agent):
 
     def wins_game(self, chess_board, my_pos, adv_pos):
         result, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
-        if result and x > y:
+        if result and x >= y:
             return True
         return False
 
     def monte_carlo(self, chess_board, my_pos, adv_pos, max_step):
-        # Implement monte_carlo function
-        # Simulates game randomly from a given state and returns the win/loss margin as an integer
-        # Call random_step function below for now, later we can use heuristic
-        pass
+        # Implement monte carlo 
+        start_time = time.time()
+        options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
+        best_move = options[0]
+        best_move_count = 0
+        for (a, b), d in options:
+            win_count = 0
+            for i in range(5):
+                if self.mc_step(chess_board, my_pos, adv_pos, True, max_step):
+                    win_count += 1
+            if win_count > best_move_count:
+                best_move_count = win_count
+                best_move = (a, b), d
+        return best_move
+                
+
+    def mc_step(self, chess_board, my_pos, adv_pos, my_turn, max_step):
+        # implement step function to check if is_endgame and if not select a random move and call itself
+        res, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
+        if res:
+            win = (x > y)
+            return win
+        if (my_turn):
+            options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
+            if len(options) <= 0:
+                return False
+            move = options[random.randint(0, len(options)-1)] # implement heuristic here later on
+            new_board = self.add_move_to_board(chess_board, move)
+            (a, b), d = move
+            self.mc_step(new_board, (a, b), adv_pos, False, max_step)
+        else:
+            options = self.get_viable_moves(chess_board, adv_pos, my_pos, max_step)
+            if len(options) <= 0:
+                return False
+            move = options[random.randint(0, len(options)-1)] # implement heuristic here later on
+            new_board = self.add_move_to_board(chess_board, move)
+            (a, b), d = move
+            self.mc_step(new_board, my_pos, (a, b), True, max_step)
 
     def minimax(self, chess_board, my_pos, adv_pos, max_step):
         # Implement minimax function

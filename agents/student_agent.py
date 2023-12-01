@@ -14,10 +14,8 @@ class StudentAgent(Agent):
         self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
-        start_time = time.time()
         move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step)
-        time_taken = time.time() - start_time
-        print("My AI's turn took ", time_taken, "seconds.")
+        return move
 
     def alpha_beta_search(self, chess_board, my_pos, adv_pos, max_step):
         # Implement alpha-beta search algorithm with a maximum time of 2 seconds
@@ -240,37 +238,30 @@ class StudentAgent(Agent):
         options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
         if (len(options) > 10):
             filtered_options = []
-            for i in range (5):
+            for i in range(5):
                 filtered_options.append(options[random.randint(0, len(options)-1)])
             options = filtered_options
         best_move = options[0]
         best_move_count = 0
-        for (a, b), d in options:
+        for a in options:
             win_count = 0
-            for i in range(5):
+            for i in range(10):
                 if self.mc_step(chess_board, my_pos, adv_pos, True, max_step):
                     win_count += 1
             if win_count > best_move_count:
                 best_move_count = win_count
-                best_move = (a, b), d
+                best_move = a
         return best_move
                 
 
     def mc_step(self, chess_board, my_pos, adv_pos, my_turn, max_step):
         # implement step function to check if is_endgame and if not select a random move and call itself
-        print("entered step function")
         res, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
         if res:
-            print("base case")
             win = (x > y)
             return win
         if (my_turn):
             options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
-            if (len(options) > 10):
-                filtered_options = []
-                for i in range (5):
-                    filtered_options.append(options[random.randint(0, len(options)-1)])
-                options = filtered_options
             if len(options) <= 0:
                 return False
             move = options[random.randint(0, len(options)-1)] # implement heuristic here later on
@@ -279,11 +270,6 @@ class StudentAgent(Agent):
             self.mc_step(new_board, (a, b), adv_pos, False, max_step)
         else:
             options = self.get_viable_moves(chess_board, adv_pos, my_pos, max_step)
-            if (len(options) > 10):
-                filtered_options = []
-                for i in range (5):
-                    filtered_options.append(options[random.randint(0, len(options)-1)])
-                options = filtered_options
             if len(options) <= 0:
                 return False
             move = options[random.randint(0, len(options)-1)] # implement heuristic here later on

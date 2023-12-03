@@ -338,7 +338,7 @@ class StudentAgent(Agent):
                 return
             if len(new_moves) == 1:
                 #check if this move wins the game
-                #make move and update my_pos and chessboard (move my_pos based on 'move')IDK HOW TO DO THIS
+                #make move and update my_pos and chessboard (move my_pos based on 'move')
                 if self.wins_game(chess_board, my_pos, adv_pos):
                     #update chess board and new position
                     new_chess_board = self.add_move_to_board(chess_board, new_moves[0])
@@ -357,7 +357,7 @@ class StudentAgent(Agent):
                 return
             new_moves = [new_moves[len(new_moves)-1]] #this is done so it terminates lol
             for move in new_moves:
-                #make move and update my_pos and chessboard (move my_pos based on 'move')IDK HOW TO DO THIS
+                #make move and update my_pos and chessboard (move my_pos based on 'move')
                 new_chess_board = self.add_move_to_board(chess_board, move)
                 tmp_my_pos = move[0]
                 new_node = Node(new_chess_board, tmp_my_pos, adv_pos, 0, False, move[1])
@@ -386,7 +386,7 @@ class StudentAgent(Agent):
                 return
             new_moves = [new_moves[0]] #this is done so it terminates lol
             for move in new_moves: #get all moves from current position
-                #make move and update adv_pos and chessboard (move the adv_pos based on 'move') IDK HOW TO DO THIS
+                #make move and update adv_pos and chessboard (move the adv_pos based on 'move')
                 new_chess_board = self.add_move_to_board(chess_board, move)
                 tmp_adv_pos = move[0]
                 new_node = Node(new_chess_board, my_pos, tmp_adv_pos, 0, False, move[1])

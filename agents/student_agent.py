@@ -14,28 +14,12 @@ class StudentAgent(Agent):
         self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
-        start_time = time.time()
-
-        # # Implement your alpha-beta search here
-        # best_move = self.alpha_beta_search(chess_board, my_pos, adv_pos, max_step)
-
-        time_taken = time.time() - start_time
-        # print("My AI's turn took ", time_taken, "seconds.")
-
-        moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
-
-        #return moves[random.randint(0, len(moves) - 1)]
-        farthest = 0
-        best_move = my_pos
-        (a, b) = my_pos
-        best_move = my_pos
-        for i in range(len(moves)):
-            (x, y) = moves[i][0] #x,y
-            if ((abs(a-x)**2+abs(b-y)**2)**(1/2) > farthest):
-                farthest = (abs(a-x)**2+abs(b-y)**2)**(1/2)
-                best_move = moves[i]
-
-        return best_move[0], best_move[1]
+        new_node = Node(chess_board, my_pos, adv_pos, 0, False, None)
+        self.minimax_build_tree(chess_board, my_pos, adv_pos, max_step, new_node, True)
+        print("finished minimax")
+        node = self.find_move_from_minmax(new_node)
+        #move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step)
+        return node.my_pos, node.direction
 
     def alpha_beta_search(self, chess_board, my_pos, adv_pos, max_step):
         # Implement alpha-beta search algorithm with a maximum time of 2 seconds
@@ -161,24 +145,141 @@ class StudentAgent(Agent):
                 for place in range(4):
                         if not chess_board[new_x, new_y, place]:
                             allowed_moves.append(((new_x, new_y), place))
-        return allowed_moves
+        #check kill and suicide for all moves
+        i = 0
+        filtered_moves = []
+        for (x, y), d in allowed_moves:
+            i+=1
+            potential_move = ((x,y),d)
+            new_board = self.add_move_to_board(chess_board, potential_move)
+            new_pos = (x, y)
+            if self.is_suicide(new_board, new_pos, adv_pos):
+                continue
+            if self.wins_game(new_board, new_pos, adv_pos):
+                return [potential_move]
+            filtered_moves.append(allowed_moves[i-1])
+        return filtered_moves
 
+    def add_move_to_board(self, chess_board, move):
+        new_board = deepcopy(chess_board)
+        (x,y),d = move
+        new_board[x, y, d] = True
+        if d == 0:
+            new_board[x-1,y,2] = True
+        if d ==1:
+            new_board[x,y+1,3] = True
+        if d == 2:
+            new_board[x+1,y,0] = True
+        if d == 3:
+            new_board[x,y-1,1] = True
+        return new_board
 
-    def is_suicide(self, chess_board, my_pos, adv_pos, move):
-        # Implement is_suicide function
-        # Returns True if the move results in defeat, else False
-        pass
+    def is_endgame(self, my_pos, adv_pos, chess_board):
+        # Union-Find
+        moves = moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
+        
+        father = dict()
+        for r in range(len(chess_board)):
+            for c in range(len(chess_board)):
+                father[(r, c)] = (r, c)
+
+        def find(pos):
+            if father[pos] != pos:
+                father[pos] = find(father[pos])
+            return father[pos]
+
+        def union(pos1, pos2):
+            father[pos1] = pos2
+
+        for r in range(len(chess_board)):
+            for c in range(len(chess_board)):
+                for dir, move in enumerate(
+                    moves[1:3]
+                ):  # Only check down and right
+                    if chess_board[r, c, dir + 1]:
+                        continue
+                    pos_a = find((r, c))
+                    pos_b = find((r + move[0], c + move[1]))
+                    if pos_a != pos_b:
+                        union(pos_a, pos_b)
+
+        for r in range(len(chess_board)):
+            for c in range(len(chess_board)):
+                find((r, c))
+        p0_r = find(tuple(my_pos))
+        p1_r = find(tuple(adv_pos))
+        p0_score = list(father.values()).count(p0_r)
+        p1_score = list(father.values()).count(p1_r)
+        if p0_r == p1_r:
+            return False, p0_score, p1_score
+        player_win = None
+        win_blocks = -1
+        if p0_score > p1_score:
+            player_win = 0
+            win_blocks = p0_score
+        elif p0_score < p1_score:
+            player_win = 1
+            win_blocks = p1_score
+        else:
+            player_win = -1
+        return True, p0_score, p1_score
+    
+    def is_suicide(self, chess_board, my_pos, adv_pos):
+        result, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
+        if result and x < y:
+            return True
+        return False
 
     def wins_game(self, chess_board, my_pos, adv_pos):
-        # Implement wins_game function
-        # Returns True if the current state results in a win, else False
-        pass
+        result, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
+        if result and x >= y:
+            return True
+        return False
 
     def monte_carlo(self, chess_board, my_pos, adv_pos, max_step):
-        # Implement monte_carlo function
-        # Simulates game randomly from a given state and returns the win/loss margin as an integer
-        # Call random_step function below for now, later we can use heuristic
-        pass
+        # Implement monte carlo 
+        start_time = time.time()
+        options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
+        if (len(options) > 10):
+            filtered_options = []
+            for i in range(5):
+                filtered_options.append(options[random.randint(0, len(options)-1)])
+            options = filtered_options
+        best_move = options[0]
+        best_move_count = 0
+        for a in options:
+            win_count = 0
+            for i in range(10):
+                if self.mc_step(chess_board, my_pos, adv_pos, True, max_step):
+                    win_count += 1
+            if win_count > best_move_count:
+                best_move_count = win_count
+                best_move = a
+        return best_move
+                
+
+    def mc_step(self, chess_board, my_pos, adv_pos, my_turn, max_step):
+        # implement step function to check if is_endgame and if not select a random move and call itself
+        res, x, y = self.is_endgame(my_pos, adv_pos, chess_board)
+        if res:
+            win = (x > y)
+            return win
+        if (my_turn):
+            options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
+            if len(options) <= 0:
+                return False
+            move = options[random.randint(0, len(options)-1)] # implement heuristic here later on
+            new_board = self.add_move_to_board(chess_board, move)
+            (a, b), d = move
+            self.mc_step(new_board, (a, b), adv_pos, False, max_step)
+        else:
+            options = self.get_viable_moves(chess_board, adv_pos, my_pos, max_step)
+            if len(options) <= 0:
+                return False
+            move = options[random.randint(0, len(options)-1)] # implement heuristic here later on
+            new_board = self.add_move_to_board(chess_board, move)
+            (a, b), d = move
+            self.mc_step(new_board, my_pos, (a, b), True, max_step)
 
     def minimax(self, chess_board, my_pos, adv_pos, max_step):
         # Implement minimax function
@@ -224,3 +325,107 @@ class StudentAgent(Agent):
         dir = allowed_barriers[np.random.randint(0, len(allowed_barriers))]
 
         return my_pos, dir
+    
+    #assumptions: the length of the array will always be 1 when you win the game
+    def minimax_build_tree(self, chess_board, my_pos, adv_pos, max_step, root, maxplayer):
+        tmp_my_pos = my_pos
+        tmp_adv_pos = adv_pos
+        #alternate between maxplayer and minplayer
+        if maxplayer: 
+            new_moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step) #get all moves from current position
+            
+            if len(new_moves) == 0: #make sure you can move otherwise return
+                return
+            if len(new_moves) == 1:
+                #check if this move wins the game
+                #make move and update my_pos and chessboard (move my_pos based on 'move')IDK HOW TO DO THIS
+                if self.wins_game(chess_board, my_pos, adv_pos):
+                    #update chess board and new position
+                    new_chess_board = self.add_move_to_board(chess_board, new_moves[0])
+                    tmp_my_pos = new_moves[0][0]
+                    new_node = Node(new_chess_board, tmp_my_pos, tmp_adv_pos, 1, True, new_moves[0][1]) #gets 1 because you wins the game
+                    print(new_node)
+                    root.add_move(new_node)
+                else:
+                    #update chess board and new position
+                    new_chess_board = self.add_move_to_board(chess_board, new_moves[0])
+                    tmp_my_pos = new_moves[0][0]
+                    new_node = Node(chess_board, my_pos, adv_pos, 0, False, new_moves[0][1])
+                    root.add_move(new_node)
+                    self.minimax_build_tree(chess_board, my_pos, adv_pos, max_step, new_node, False)
+                    self.evaluate_node(new_node, True)
+                return
+            new_moves = [new_moves[len(new_moves)-1]] #this is done so it terminates lol
+            for move in new_moves:
+                #make move and update my_pos and chessboard (move my_pos based on 'move')IDK HOW TO DO THIS
+                new_chess_board = self.add_move_to_board(chess_board, move)
+                tmp_my_pos = move[0]
+                new_node = Node(new_chess_board, tmp_my_pos, adv_pos, 0, False, move[1])
+                root.add_move(new_node)
+                #call minimax on this node as root
+                self.minimax_build_tree(new_chess_board, tmp_my_pos, adv_pos, max_step, new_node, False)
+                self.evaluate_node(new_node, True)
+        else: #minplayer
+            new_moves = self.get_viable_moves(chess_board, adv_pos, my_pos, max_step)
+            if len(new_moves) == 0:
+                return
+            if len(new_moves) == 1:
+                #check if this move wins the game
+                if self.wins_game(chess_board, adv_pos, my_pos):
+                    new_chess_board = self.add_move_to_board(chess_board, new_moves[0])
+                    tmp_adv_pos = new_moves[0][0]
+                    new_node = Node(new_chess_board, my_pos, tmp_adv_pos, -1, False, new_moves[0][1]) #gets -1 because adv wins the game
+                    root.add_move(new_node)
+                else: 
+                    new_chess_board = self.add_move_to_board(chess_board, new_moves[0])
+                    tmp_adv_pos = new_moves[0][0]
+                    new_node = Node(new_chess_board, my_pos, tmp_adv_pos, 0, False, new_moves[0][1])
+                    root.add_move(new_node)
+                    self.minimax_build_tree(new_chess_board, my_pos, tmp_adv_pos, max_step, new_node, True)
+                    self.evaluate_node(new_node, False)
+                return
+            new_moves = [new_moves[0]] #this is done so it terminates lol
+            for move in new_moves: #get all moves from current position
+                #make move and update adv_pos and chessboard (move the adv_pos based on 'move') IDK HOW TO DO THIS
+                new_chess_board = self.add_move_to_board(chess_board, move)
+                tmp_adv_pos = move[0]
+                new_node = Node(new_chess_board, my_pos, tmp_adv_pos, 0, False, move[1])
+                root.add_move(new_node)
+                #call minimax on this node as root
+                self.minimax_build_tree(new_chess_board, my_pos, tmp_adv_pos, max_step, new_node, True)
+                self.evaluate_node(new_node, False)
+        return
+    def evaluate_node(self,eval_node, maxplayer):
+        print("evaluated")
+        nodes = eval_node.nodes
+        valuemax = -10
+        valuemin = 10
+        for node in nodes:
+            if maxplayer:
+                if node.minmaxvalue >= valuemax :
+                    eval_node.minmaxvalue = node.minmaxvalue
+            else:
+                if node.minmaxvalue <= valuemin :
+                    eval_node.minmaxvalue = node.minmaxvalue
+    def find_move_from_minmax(self,root): #i dont think this function is right
+        child_nodes = root.nodes
+        for node in child_nodes:
+            if node.minmaxvalue == 1 :
+                print("yay")
+                if node.winsgame == True :
+                    return node
+                node = self.find_move_from_minmax(node)
+                return node
+        return child_nodes[0] 
+class Node:
+    def __init__(self, chess_board, my_pos, adv_pos, minmaxvalue, winsgame, direction):
+        self.chess_board = chess_board
+        self.my_pos = my_pos
+        self.adv_pos = adv_pos
+        self.nodes = []
+        self.minmaxvalue = minmaxvalue
+        self.winsgame = winsgame
+        self.direction = direction
+    def add_move(self, child):
+        self.nodes.append(child)
+    

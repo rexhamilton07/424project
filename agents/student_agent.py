@@ -14,13 +14,19 @@ class StudentAgent(Agent):
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
         # try minimax
-        new_node = Node(chess_board, my_pos, adv_pos, 0, False, None)
-        if (self.minimax_build_tree(chess_board, my_pos, adv_pos, max_step, new_node, True)):
-            node = self.find_move_from_minmax(new_node)
-            return node.my_pos, node.direction
-        # if minimax tree too big, go to monte carlo
-        move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step)
-        return move
+        # new_node = Node(chess_board, my_pos, adv_pos, 0, False, None)
+        # if (self.minimax_build_tree(chess_board, my_pos, adv_pos, max_step, new_node, True)):
+        #     node = self.find_move_from_minmax(new_node)
+        #     return node.my_pos, node.direction
+        # # if minimax tree too big, go to monte carlo
+        # move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step)
+        # return move
+
+        moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
+        sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
+        sorted_moves = sorted_moves[:10]
+        best_move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step, sorted_moves)
+        return best_move
 
     def get_viable_moves(self, chess_board, my_pos, adv_pos, max_step):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
@@ -78,6 +84,57 @@ class StudentAgent(Agent):
                 return [potential_move]
             filtered_moves.append(allowed_moves[i-1])
         return filtered_moves
+
+    def heuristic(self, chess_board, my_pos, adv_pos, move, max_step):
+        score = 0
+        if (self.three_walls(chess_board, my_pos, adv_pos, move)):
+            score -= 20 # need to decide how much to weigh this at
+        
+        if (self.continues_wall(chess_board, move)):
+            score += 10 # decide how much to weigh this
+
+        score += self.move_distance(my_pos, move)
+        
+        return score
+        
+    # how far does the agent travel for the move
+    def move_distance(self, my_pos, move):
+        (x,y),d = move
+        (a, b) = my_pos
+        return np.sqrt((x - a)**2 + (y - b)**2)
+
+    # contained by three walls
+    def three_walls(self, chess_board, my_pos, adv_pos, move):
+        numwalls = 0
+        # self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
+        (x, y), d = move
+        chess_board = self.add_move_to_board(chess_board, move)
+        if (chess_board[x, y, 0]):
+            numwalls+=1
+        if (chess_board[x, y, 1]):
+            numwalls+=1
+        if (chess_board[x, y, 2]):
+            numwalls+=1
+        if (chess_board[x, y, 3]):
+            numwalls+=1
+        if numwalls == 3:
+            return True
+        return False
+
+    # continues a wall
+
+    def continues_wall(self, chess_board, move): # only counts straight walls, not corners (will box itself in three times and then move)
+        (x, y), d = move
+        # self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
+        if d == 0 and ((x > 0 and chess_board[x-1, y, 0]) or (x < len(chess_board) -1 and chess_board[x+1, y, 0])):
+            return True
+        if d == 2 and ((x > 0 and chess_board[x-1, y, 2]) or (x < len(chess_board) -1 and chess_board[x+1, y, 2])):
+            return True
+        if d == 1 and ((y > 0 and chess_board[x, y -1, 1]) or (y < len(chess_board) -1 and chess_board[x, y+1, 1])):
+            return True
+        if d == 3 and ((y > 0 and chess_board[x, y -1, 3]) or (y < len(chess_board) -1 and chess_board[x, y+1, 3])):
+            return True
+        return False
 
     def add_move_to_board(self, chess_board, move):
         (x, y), d = move
@@ -155,9 +212,8 @@ class StudentAgent(Agent):
             return True
         return False
 
-    def monte_carlo(self, chess_board, my_pos, adv_pos, max_step):
+    def monte_carlo(self, chess_board, my_pos, adv_pos, max_step, options):
         start_time = time.time()
-        options = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
         if (len(options) > 10):
             filtered_options = []
             for i in range(5):

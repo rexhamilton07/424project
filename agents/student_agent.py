@@ -18,15 +18,14 @@ class StudentAgent(Agent):
             node = self.find_move_from_minmax(new_node)
             if node.direction != new_node.direction and node.my_pos != new_node.my_pos:
                 if node.minmaxvalue == 1:
-                    return node.my_pos, node.direction
-                
+                    return node.my_pos, node.direction   
             else:
                 moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
                 if len(moves) > 0:
                     return moves[0]
                 return
+        moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
         if len(moves) > 0:
-            moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
             sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
             sorted_moves = sorted_moves[:10]
             best_move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step, sorted_moves)

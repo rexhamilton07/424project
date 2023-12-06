@@ -19,9 +19,7 @@ class StudentAgent(Agent):
             self.evaluate_node(new_node, True)
             node = self.find_move_from_minmax(new_node)
             if node.direction != new_node.direction and node.my_pos != new_node.my_pos:
-                print("yes")
                 if node.minmaxvalue == 1:
-                    print("woohoo")
                     return node.my_pos, node.direction   
             else:
                 moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
@@ -100,15 +98,12 @@ class StudentAgent(Agent):
         score = 0  
         score += self.move_distance(my_pos, move)
         dis = self.adv_distance(move, adv_pos)
-        #if (not self.three_walls(chess_board, my_pos, adv_pos, move)):
-        score -= dis[0] #want to move closer to the adversary but not if the position is a trap
+        score -= dis[0] #want to move closer to the adversary
         if dis[1] == True:
             score += 2
-        # 
-        #     score -= 5 
+ 
         return score
     #distance between move and adv_pos
-    # self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
     def adv_distance(self, move, adv_pos):
         my_x, my_y = move[0]
         adv_x, adv_y = adv_pos

@@ -92,7 +92,7 @@ class StudentAgent(Agent):
         return filtered_moves
 
     def heuristic(self, chess_board, my_pos, adv_pos, move, max_step):
-        score = 0  
+        score = 3
         score += self.move_distance(my_pos, move)
         score -= self.adv_distance(move, adv_pos)
         if (self.three_walls(chess_board, my_pos, adv_pos, move)):

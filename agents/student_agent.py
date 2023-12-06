@@ -13,6 +13,7 @@ class StudentAgent(Agent):
         self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
+        start_time = time.time()
         new_node = Node(chess_board, my_pos, adv_pos, 0, False, 2)
         if (self.minimax_build_tree(chess_board, my_pos, adv_pos, max_step, new_node, True)):
             node = self.find_move_from_minmax(new_node)
@@ -21,16 +22,21 @@ class StudentAgent(Agent):
                     return node.my_pos, node.direction   
             else:
                 moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
+                print(moves)
                 if len(moves) > 0:
-                    return moves[0]
-                return
+                    sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
+                    print(sorted_moves[0])
+                    return sorted_moves[0]
+                return self.random_step(chess_board, my_pos, adv_pos, max_step)
         moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
         if len(moves) > 0:
             sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
             sorted_moves = sorted_moves[:10]
-            best_move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step, sorted_moves)
+            best_move = self.monte_carlo(chess_board, my_pos, adv_pos, max_step, sorted_moves, start_time)
+            print(best_move)
             return best_move
-        return
+        return self.random_step(chess_board, my_pos, adv_pos, max_step)
+    #def get_viable_moves2(self, chess_board, my_pos, adv_pos, max_step):
 
     def get_viable_moves(self, chess_board, my_pos, adv_pos, max_step):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
@@ -91,19 +97,17 @@ class StudentAgent(Agent):
         return filtered_moves
 
     def heuristic(self, chess_board, my_pos, adv_pos, move, max_step):
-        score = 100
-        # if (self.three_walls(chess_board, my_pos, adv_pos, move)):
-        #     score -= 3 # need to decide how much to weigh this at
-        
+        score = 0  
         # if (self.continues_wall(chess_board, move)):
         #     score += 3 # decide how much to weigh this
-
-        # score += self.move_distance(my_pos, move)
-        score -= self.adv_distance(my_pos, adv_pos)
+        score += self.move_distance(my_pos, move)
+        score -= self.adv_distance(move, adv_pos)
+        if (self.three_walls(chess_board, my_pos, adv_pos, move)):
+            score -= 3 # need to decide how much to weigh this at
         
         return score
-    def adv_distance(self, my_pos, adv_pos):
-        my_x, my_y = my_pos
+    def adv_distance(self, move, adv_pos):
+        my_x, my_y = move[0]
         adv_x, adv_y = adv_pos
         return abs(my_x - adv_x) + abs(my_y - adv_y)
     
@@ -224,8 +228,7 @@ class StudentAgent(Agent):
             return True
         return False
 
-    def monte_carlo(self, chess_board, my_pos, adv_pos, max_step, options):
-        start_time = time.time()
+    def monte_carlo(self, chess_board, my_pos, adv_pos, max_step, options, start_time):
         if (len(options) > 10):
             filtered_options = []
             for i in range(5):
@@ -234,16 +237,15 @@ class StudentAgent(Agent):
         best_move = options[0]
         best_move_count = 0
         for a in options:
+            if (time.time() - start_time > 1.5):
+                return best_move
             win_count = 0
-            print("monte carlo")
-            for i in range(50):
+            for i in range(30):
                 if self.mc_step(chess_board, my_pos, adv_pos, True, max_step):
                     win_count += 1
             if win_count > best_move_count:
                 best_move_count = win_count
                 best_move = a
-                if (time.time() - start_time > 1.5):
-                    return best_move
         return best_move                
 
     def mc_step(self, chess_board, my_pos, adv_pos, my_turn, max_step):
@@ -258,7 +260,7 @@ class StudentAgent(Agent):
             sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
             new_board = self.add_move_to_board(chess_board, moves[0])
             (a, b), d = moves[0]
-            self.mc_step(new_board, (a, b), adv_pos, False, max_step)
+            return self.mc_step(new_board, (a, b), adv_pos, False, max_step)
         else:
             moves = []
             for i in range(0, 5): # can decide how many we want
@@ -266,7 +268,7 @@ class StudentAgent(Agent):
             sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, adv_pos, my_pos, move, max_step), reverse=True)
             new_board = self.add_move_to_board(chess_board, moves[0])
             (a, b), d = moves[0]
-            self.mc_step(new_board, my_pos, (a, b), True, max_step)
+            return self.mc_step(new_board, my_pos, (a, b), True, max_step)
 
     def random_step(self, chess_board, my_pos, adv_pos, max_step):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
@@ -315,7 +317,6 @@ class StudentAgent(Agent):
             if len(new_moves) == 0: #make sure you can move otherwise return
                 return True
             if len(new_moves) == 1:
-                print("wins")
                 #check if this move wins the game
                 new_chess_board = self.add_move_to_board(chess_board, new_moves[0])
                 tmp_my_pos = new_moves[0][0]
@@ -323,12 +324,12 @@ class StudentAgent(Agent):
                 if self.wins_game(new_chess_board, tmp_my_pos, adv_pos):
                     #update chess board and new position
                     print("wins")
-                    new_node = Node(new_chess_board, tmp_my_pos, tmp_adv_pos, 1, True, new_moves[0][1]) #gets 1 because you wins the game
+                    new_node = Node(new_chess_board, tmp_my_pos, adv_pos, 1, True, new_moves[0][1]) #gets 1 because you wins the game
                     print(new_node)
                     root.add_move(new_node)
                 else:
                     #update chess board and new position
-                    new_node = Node(chess_board, my_pos, adv_pos, 0, False, new_moves[0][1])
+                    new_node = Node(new_chess_board, tmp_my_pos, adv_pos, 0, False, new_moves[0][1])
                     root.add_move(new_node)
                     self.minimax_build_tree(new_chess_board, tmp_my_pos, adv_pos, max_step, new_node, False)
                     self.evaluate_node(new_node, True)

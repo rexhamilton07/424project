@@ -16,7 +16,6 @@ class StudentAgent(Agent):
         start_time = time.time()
         new_node = Node(chess_board, my_pos, adv_pos, 0, False, 2)
         if (self.minimax_build_tree(chess_board, my_pos, adv_pos, max_step, new_node, True)):
-            self.evaluate_node(new_node, True)
             node = self.find_move_from_minmax(new_node)
             if node.direction != new_node.direction and node.my_pos != new_node.my_pos:
                 if node.minmaxvalue == 1:
@@ -27,7 +26,6 @@ class StudentAgent(Agent):
                     sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
                     return sorted_moves[0]
                 return self.random_step(chess_board, my_pos, adv_pos, max_step)
-
         moves = self.get_viable_moves(chess_board, my_pos, adv_pos, max_step)
         if len(moves) > 0:
             sorted_moves = sorted(moves, key=lambda move: self.heuristic(chess_board, my_pos, adv_pos, move, max_step), reverse=True)
@@ -40,7 +38,6 @@ class StudentAgent(Agent):
         moves = ((-1, 0), (0, 1), (1, 0), (0, -1))
         x, y = my_pos
         allowed_moves = []
-
         for d in range(0, 4):
             for l in range(0, max_step):  # 0 to the max amount you can move
                 new_x, new_y = x + l * moves[d][0], y + l * moves[d][1]
@@ -97,31 +94,14 @@ class StudentAgent(Agent):
     def heuristic(self, chess_board, my_pos, adv_pos, move, max_step):
         score = 0  
         score += self.move_distance(my_pos, move)
-        dis = self.adv_distance(move, adv_pos)
-        score -= dis[0] #want to move closer to the adversary
-        if dis[1] == True:
-            score += 2
- 
+        score -= self.adv_distance(move, adv_pos)
+        if (self.three_walls(chess_board, my_pos, adv_pos, move)):
+            score -= 3
         return score
-    #distance between move and adv_pos
     def adv_distance(self, move, adv_pos):
         my_x, my_y = move[0]
         adv_x, adv_y = adv_pos
-        wall_pos = False
-        if my_x > adv_x:
-            if move[1] == 3:
-                wall_pos = True
-        else:
-            if move[1] == 1:
-                wall_pos = True
-        if my_y > adv_y :
-            if move[1] == 2:
-                wall_pos == True
-        else:
-            if move[1] == 0:
-                wall_pos == True
-    
-        return abs(my_x - adv_x) + abs(my_y - adv_y), wall_pos
+        return abs(my_x - adv_x) + abs(my_y - adv_y)
     
     # how far does the agent travel for the move
     def move_distance(self, my_pos, move):
@@ -132,7 +112,6 @@ class StudentAgent(Agent):
     # contained by three walls
     def three_walls(self, chess_board, my_pos, adv_pos, move):
         numwalls = 0
-        # self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
         (x, y), d = move
         chess_board = self.add_move_to_board(chess_board, move)
         if (chess_board[x, y, 0]):
@@ -146,21 +125,6 @@ class StudentAgent(Agent):
         if numwalls == 2:
             return True
         if numwalls == 3:
-            return True
-        return False
-
-    # continues a wall
-
-    def continues_wall(self, chess_board, move): # only counts straight walls, not corners (will box itself in three times and then move)
-        (x, y), d = move
-        # self.dir_map = {"u": 0, "r": 1, "d": 2, "l": 3}
-        if d == 0 and ((x > 0 and chess_board[x-1, y, 0]) or (x < len(chess_board) -1 and chess_board[x+1, y, 0])):
-            return True
-        if d == 2 and ((x > 0 and chess_board[x-1, y, 2]) or (x < len(chess_board) -1 and chess_board[x+1, y, 2])):
-            return True
-        if d == 1 and ((y > 0 and chess_board[x, y -1, 1]) or (y < len(chess_board) -1 and chess_board[x, y+1, 1])):
-            return True
-        if d == 3 and ((y > 0 and chess_board[x, y -1, 3]) or (y < len(chess_board) -1 and chess_board[x, y+1, 3])):
             return True
         return False
 
@@ -241,6 +205,11 @@ class StudentAgent(Agent):
         return False
 
     def monte_carlo(self, chess_board, my_pos, adv_pos, max_step, options, start_time):
+        if (len(options) > 10):
+            filtered_options = []
+            for i in range(5):
+                filtered_options.append(options[random.randint(0, len(options)-1)])
+            options = filtered_options
         best_move = options[0]
         best_move_count = 0
         for a in options:
@@ -383,14 +352,13 @@ class StudentAgent(Agent):
         nodes = eval_node.nodes
         valuemax = -10
         valuemin = 10
-        if len(nodes) != 0:
-            for node in nodes:
-                if maxplayer:
-                    if node.minmaxvalue >= valuemax :
-                        eval_node.minmaxvalue = node.minmaxvalue
-                else:
-                    if node.minmaxvalue <= valuemin :
-                        eval_node.minmaxvalue = node.minmaxvalue
+        for node in nodes:
+            if maxplayer:
+                if node.minmaxvalue >= valuemax :
+                    eval_node.minmaxvalue = node.minmaxvalue
+            else:
+                if node.minmaxvalue <= valuemin :
+                    eval_node.minmaxvalue = node.minmaxvalue
     def find_move_from_minmax(self,root): 
         child_nodes = root.nodes
         if len(child_nodes) == 0 :

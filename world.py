@@ -93,8 +93,8 @@ class World:
 
         if board_size is None:
             # Random chessboard size
-            #self.board_size = np.random.randint(MIN_BOARD_SIZE, MAX_BOARD_SIZE)
-            self.board_size = 12
+            self.board_size = np.random.randint(MIN_BOARD_SIZE, MAX_BOARD_SIZE)
+            
             logger.info(
                 f"No board size specified. Randomly generating size : {self.board_size}x{self.board_size}"
             )
@@ -103,6 +103,7 @@ class World:
             logger.info(f"Setting board size to {self.board_size}x{self.board_size}")
 
         # Whose turn to step
+        
         self.turn = 0
 
         # Time taken by each player

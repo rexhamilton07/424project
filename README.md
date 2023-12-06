@@ -45,7 +45,7 @@ python simulator.py --player_1 human_agent --player_2 random_agent --display
 There is some randomness (coming from the initial game setup and potentially agent logic), so go fairly evaluate agents, we will run them against eachother multiple times, alternating their roles as player_1 and player_2, and on boards are drawn randomly (between size 6 and 12). The aggregate win % will determine a fair winner. Use the `--autoplay` flag to run $n$ games sequentially, where $n$ can be set using `--autoplay_runs`.
 
 ```bash
-python3 simulator.py --player_1 random_agent --player_2 student_agent --autoplay
+python3 simulator.py --player_1 random_agent --player_2 student_agent --autoplay --autoplay_runs 1000
 ```
 
 During autoplay, boards are drawn randomly between size `--board_size_min` and `--board_size_max` for each iteration. You may try various ranges for your own information and development by providing these variables on the command-line. However, the defaults (to be used during grading) are 6 and 12, so ensure the timing limits are satisfied for every board in this size range. 
